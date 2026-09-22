@@ -34,7 +34,7 @@ def create_sales_pivot(dataframe: pd.DataFrame) -> pd.DataFrame:
 
         if not total_rows.empty:
             total_row = total_rows.copy()
-            total_row[TOTAL_LABEL] = detail_rows[TOTAL_LABEL].sum()
+            total_row[TOTAL_LABEL] = total_rows[numeric_columns].sum(axis=1) if numeric_columns else 0.0
             pivot = pd.concat([detail_rows, total_row], ignore_index=True)
         else:
             pivot = detail_rows
