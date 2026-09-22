@@ -105,13 +105,15 @@ def _format_report_sheet(worksheet, pivot: pd.DataFrame) -> None:
             if worksheet.cell(row=3, column=column_index).value != TOTAL_LABEL
         ]
         first_data_column_index = non_total_value_columns[0] if non_total_value_columns else None
+        last_data_value_column_index = non_total_value_columns[-1] if non_total_value_columns else None
         if (
             last_data_row >= 4
             and last_data_column >= 2
             and first_data_column_index is not None
+            and last_data_value_column_index is not None
         ):
             worksheet.conditional_formatting.add(
-                f"{get_column_letter(first_data_column_index)}4:{get_column_letter(last_data_column)}{last_data_row}",
+                f"{get_column_letter(first_data_column_index)}4:{get_column_letter(last_data_value_column_index)}{last_data_row}",
                 ColorScaleRule(
                     start_type="min",
                     start_color="F8696B",

@@ -15,7 +15,6 @@ from src.reporting.pivot_generator import create_sales_pivot
 from src.utils.logger import setup_logging
 
 LOGGER = logging.getLogger(__name__)
-LOGGER = logging.getLogger(__name__)
 
 
 def main() -> int:
