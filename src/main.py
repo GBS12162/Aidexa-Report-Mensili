@@ -3,30 +3,25 @@
 from __future__ import annotations
 
 import logging
-import os
-from pathlib import Path
 import sys
 
 import oracledb
-from dotenv import load_dotenv
 
-from config import load_settings
+from config import load_log_file, load_settings
 from src.db.oracle_connection import get_connection
 from src.reporting.data_extractor import extract_sales_data
 from src.reporting.excel_formatter import export_report
 from src.reporting.pivot_generator import create_sales_pivot
 from src.utils.logger import setup_logging
 
-
 LOGGER = logging.getLogger(__name__)
-DEFAULT_LOG_FILE = Path("logs/report.log")
+LOGGER = logging.getLogger(__name__)
 
 
 def main() -> int:
     """Run the report generation workflow."""
 
-    load_dotenv()
-    setup_logging(Path(os.getenv("LOG_FILE", str(DEFAULT_LOG_FILE))))
+    setup_logging(load_log_file())
 
     try:
         settings = load_settings()

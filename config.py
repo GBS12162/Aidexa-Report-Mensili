@@ -47,13 +47,20 @@ def _require_env(name: str) -> str:
     return value
 
 
+def load_log_file() -> Path:
+    """Load and normalize the configured log file path."""
+
+    load_dotenv()
+    return Path(os.getenv("LOG_FILE", "logs/report.log"))
+
+
 def load_settings() -> AppSettings:
     """Load and validate runtime settings from a .env file."""
 
     load_dotenv()
 
     output_file = Path(os.getenv("OUTPUT_FILE", "output/report.xlsx"))
-    log_file = Path(os.getenv("LOG_FILE", "logs/report.log"))
+    log_file = load_log_file()
     region_value = os.getenv("QUERY_REGION", "").strip() or None
 
     start_date = date.fromisoformat(_require_env("QUERY_START_DATE"))
