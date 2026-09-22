@@ -53,6 +53,7 @@ def load_settings() -> AppSettings:
     load_dotenv()
 
     output_file = Path(os.getenv("OUTPUT_FILE", "output/report.xlsx"))
+    log_file = Path(os.getenv("LOG_FILE", "logs/report.log"))
     region_value = os.getenv("QUERY_REGION", "").strip() or None
 
     start_date = date.fromisoformat(_require_env("QUERY_START_DATE"))
@@ -74,4 +75,5 @@ def load_settings() -> AppSettings:
             region=region_value,
         ),
         output_file=output_file,
+        log_file=log_file,
     )

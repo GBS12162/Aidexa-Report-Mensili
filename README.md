@@ -46,6 +46,7 @@ pip install -r requirements.txt
    QUERY_END_DATE=2026-01-31
    QUERY_REGION=
    OUTPUT_FILE=output/report.xlsx
+   LOG_FILE=logs/report.log
    ```
 
 ## Variabili ambiente
@@ -61,6 +62,7 @@ pip install -r requirements.txt
 | `QUERY_END_DATE` | Sì | Data fine filtro vendite (`YYYY-MM-DD`) |
 | `QUERY_REGION` | No | Filtro opzionale per regione |
 | `OUTPUT_FILE` | No | Percorso file Excel finale |
+| `LOG_FILE` | No | Percorso file di log applicativo |
 
 ## Esecuzione
 
