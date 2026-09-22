@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 import sys
 
 import oracledb
@@ -16,14 +17,18 @@ from src.utils.logger import setup_logging
 
 
 LOGGER = logging.getLogger(__name__)
+DEFAULT_LOG_FILE = Path("logs/report.log")
 
 
 def main() -> int:
     """Run the report generation workflow."""
 
+    setup_logging(DEFAULT_LOG_FILE)
+
     try:
         settings = load_settings()
-        setup_logging(settings.log_file)
+        if settings.log_file != DEFAULT_LOG_FILE:
+            setup_logging(settings.log_file)
         LOGGER.info("Avvio generazione report vendite")
 
         with get_connection(settings.oracle) as connection:
@@ -49,7 +54,8 @@ def _log_and_print(message: str, exc: Exception) -> None:
     logger = logging.getLogger(__name__)
     if logging.getLogger().handlers:
         logger.error("%s: %s", message, exc)
-    print(f"{message}: {exc}", file=sys.stderr)
+    else:
+        print(f"{message}: {exc}", file=sys.stderr)
 
 
 if __name__ == "__main__":

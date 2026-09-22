@@ -25,10 +25,21 @@ def create_sales_pivot(dataframe: pd.DataFrame) -> pd.DataFrame:
         margins_name=TOTAL_LABEL,
     )
 
-    pivot = pivot.reset_index()
     if TOTAL_LABEL not in pivot.columns:
-        numeric_columns = [column for column in pivot.columns if column != "REGIONE"]
-        pivot[TOTAL_LABEL] = pivot[numeric_columns].sum(axis=1) if numeric_columns else 0.0
+        pivot = pivot.reset_index()
+        total_rows = pivot[pivot["REGIONE"] == TOTAL_LABEL]
+        detail_rows = pivot[pivot["REGIONE"] != TOTAL_LABEL].copy()
+        numeric_columns = [column for column in detail_rows.columns if column != "REGIONE"]
+        detail_rows[TOTAL_LABEL] = detail_rows[numeric_columns].sum(axis=1) if numeric_columns else 0.0
+
+        if not total_rows.empty:
+            total_row = total_rows.copy()
+            total_row[TOTAL_LABEL] = detail_rows[TOTAL_LABEL].sum()
+            pivot = pd.concat([detail_rows, total_row], ignore_index=True)
+        else:
+            pivot = detail_rows
+    else:
+        pivot = pivot.reset_index()
 
     total_rows = pivot[pivot["REGIONE"] == TOTAL_LABEL]
     detail_rows = pivot[pivot["REGIONE"] != TOTAL_LABEL]
