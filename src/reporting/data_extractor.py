@@ -34,15 +34,17 @@ def extract_sales_data(
 ) -> pd.DataFrame:
     """Extract sales data from Oracle using a parameterized query."""
 
-    dataframe = pd.read_sql(
-        SALES_QUERY,
-        con=connection,
-        params={
-            "start_date": settings.start_date,
-            "end_date": settings.end_date,
-            "region": settings.region,
-        },
-    )
+    with connection.cursor() as cursor:
+        cursor.execute(
+            SALES_QUERY,
+            {
+                "start_date": settings.start_date,
+                "end_date": settings.end_date,
+                "region": settings.region,
+            },
+        )
+        columns = [column[0] for column in cursor.description]
+        dataframe = pd.DataFrame(cursor.fetchall(), columns=columns)
 
     LOGGER.info("Estratte %s righe da Oracle", len(dataframe))
     return dataframe

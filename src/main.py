@@ -13,7 +13,7 @@ from src.db.oracle_connection import get_connection
 from src.reporting.data_extractor import extract_sales_data
 from src.reporting.excel_formatter import export_report
 from src.reporting.pivot_generator import create_sales_pivot
-from src.utils.logger import setup_logging
+from src.utils.logger import add_file_handler, setup_logging
 
 
 LOGGER = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ def main() -> int:
     try:
         settings = load_settings()
         if settings.log_file != DEFAULT_LOG_FILE:
-            setup_logging(settings.log_file)
+            add_file_handler(settings.log_file)
         LOGGER.info("Avvio generazione report vendite")
 
         with get_connection(settings.oracle) as connection:

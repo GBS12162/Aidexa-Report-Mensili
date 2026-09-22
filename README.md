@@ -15,7 +15,7 @@ Repository Python professionale per l'estrazione dati da Oracle e la generazione
 
 ## Requisiti
 
-- Python 3.10+
+- Python 3.12
 - Accesso a un database Oracle
 
 ## Installazione
