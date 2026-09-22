@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import pandas as pd
@@ -11,6 +12,8 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from src.reporting.pivot_generator import TOTAL_LABEL
+
+LOGGER = logging.getLogger(__name__)
 
 HEADER_FILL = PatternFill("solid", fgColor="1F4E78")
 HEADER_FONT = Font(color="FFFFFF", bold=True)
@@ -39,6 +42,7 @@ def export_report(dataframe: pd.DataFrame, pivot: pd.DataFrame, output_path: Pat
     _format_data_sheet(workbook["DATI"], dataframe)
     _format_report_sheet(workbook["REPORT"], pivot)
     workbook.save(output_path)
+    LOGGER.info("Report Excel salvato in %s", output_path)
 
 
 def _format_data_sheet(worksheet, dataframe: pd.DataFrame) -> None:
@@ -95,7 +99,11 @@ def _format_report_sheet(worksheet, pivot: pd.DataFrame) -> None:
     if worksheet.max_row >= 4 and worksheet.max_column >= 2:
         last_data_row = total_row_index - 1 if total_row_index else worksheet.max_row
         last_data_column = worksheet.max_column - 1 if worksheet.cell(row=3, column=worksheet.max_column).value == TOTAL_LABEL else worksheet.max_column
-        if last_data_row >= 4 and last_data_column >= 2:
+        has_non_total_value_columns = any(
+            worksheet.cell(row=3, column=column_index).value != TOTAL_LABEL
+            for column_index in range(2, worksheet.max_column + 1)
+        )
+        if last_data_row >= 4 and last_data_column >= 2 and has_non_total_value_columns:
             worksheet.conditional_formatting.add(
                 f"B4:{get_column_letter(last_data_column)}{last_data_row}",
                 ColorScaleRule(
