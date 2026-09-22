@@ -101,7 +101,7 @@ def _format_report_sheet(worksheet, pivot: pd.DataFrame) -> None:
         last_data_column = worksheet.max_column - 1 if worksheet.cell(row=3, column=worksheet.max_column).value == TOTAL_LABEL else worksheet.max_column
         has_non_total_value_columns = any(
             worksheet.cell(row=3, column=column_index).value != TOTAL_LABEL
-            for column_index in range(2, worksheet.max_column + 1)
+            for column_index in range(2, last_data_column + 1)
         )
         if last_data_row >= 4 and last_data_column >= 2 and has_non_total_value_columns:
             worksheet.conditional_formatting.add(
