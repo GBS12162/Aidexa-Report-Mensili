@@ -9,6 +9,8 @@ import os
 
 from dotenv import load_dotenv
 
+from src.utils.console_password import prompt_password_masked
+
 
 @dataclass(frozen=True)
 class OracleSettings:
@@ -47,6 +49,13 @@ def _require_env(name: str) -> str:
     return value
 
 
+def _read_oracle_password() -> str:
+    value = os.getenv("ORACLE_PASSWORD", "")
+    if value:
+        return value
+    return prompt_password_masked("Inserisci password Oracle: ")
+
+
 def load_log_file() -> Path:
     """Load and normalize the configured log file path."""
 
@@ -74,7 +83,7 @@ def load_settings() -> AppSettings:
             int(_require_env("ORACLE_PORT")),
             _require_env("ORACLE_SERVICE_NAME"),
             _require_env("ORACLE_USERNAME"),
-            _require_env("ORACLE_PASSWORD"),
+            _read_oracle_password(),
         ),
         query=QuerySettings(
             start_date=start_date,
