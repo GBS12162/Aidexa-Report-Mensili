@@ -1,17 +1,20 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_dynamic_libs, collect_submodules
 
 hiddenimports = (
-    ["oracledb.thin_impl"]
+    ["oracledb.thin_impl", "_cffi_backend"]
     + collect_submodules("keyring.backends")
+    + collect_submodules("cryptography")
     + ["win32timezone", "win32cred", "win32ctypes.pywin32"]
 )
+
+binaries = collect_dynamic_libs("cryptography")
 
 a = Analysis(
     ['src\\main.py'],
     pathex=[],
-    binaries=[],
+    binaries=binaries,
     datas=[
         ('examples\\caso1\\query.sql', 'examples/caso1'),
         ('examples\\caso1\\input.xlsx', 'examples/caso1'),

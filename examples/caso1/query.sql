@@ -25,14 +25,8 @@ WITH query_principale_500 AS (
       AND logs.sl_status_code = '500'
       AND logs.sl_component = 'WGT'
       AND logs.sl_ser_type = 'RES'
-      AND sl_ins_time >= TO_TIMESTAMP(
-        '01/08/2025 00:00:00.000000',
-        'DD/MM/YYYY HH24:MI:SS.FF6'
-      )
-      AND sl_ins_time < TO_TIMESTAMP(
-        '31/08/2025 23:59:59.999999',
-        'DD/MM/YYYY HH24:MI:SS.FF6'
-      )
+      AND sl_ins_time >= ADD_MONTHS(TRUNC(SYSDATE, 'YYYY'), :selected_month - 1)
+      AND sl_ins_time < ADD_MONTHS(TRUNC(SYSDATE, 'YYYY'), :selected_month)
     GROUP BY
       TRUNC(logs.sl_ins_time),
       p.prodcode,
@@ -75,14 +69,8 @@ query_principale_400 AS (
       AND logs.sl_status_code = '400'
       AND logs.sl_component = 'WGT'
       AND logs.sl_ser_type = 'RES'
-      AND sl_ins_time >= TO_TIMESTAMP(
-        '01/08/2025 00:00:00.000000',
-        'DD/MM/YYYY HH24:MI:SS.FF6'
-      )
-      AND sl_ins_time < TO_TIMESTAMP(
-        '31/08/2025 23:59:59.999999',
-        'DD/MM/YYYY HH24:MI:SS.FF6'
-      )
+      AND sl_ins_time >= ADD_MONTHS(TRUNC(SYSDATE, 'YYYY'), :selected_month - 1)
+      AND sl_ins_time < ADD_MONTHS(TRUNC(SYSDATE, 'YYYY'), :selected_month)
     GROUP BY
       TRUNC(logs.sl_ins_time),
       p.prodcode,

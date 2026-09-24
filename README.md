@@ -16,6 +16,12 @@ Generatore di report Excel a partire da una query Oracle fissa
   report Excel che riproduce la struttura di
   `examples/caso1/output_atteso.xlsx` (righe per URL raggruppate per tipo
   errore 400/500, colonne per data/stato con subtotali e totale generale).
+  La query riceve il mese selezionato come bind Oracle e usa sempre l'anno
+  corrente del database.
+- Dopo la connessione Oracle, selezione interattiva del mese. Se i dati
+  estratti contengono più anni viene richiesta anche la selezione dell'anno;
+  il report contiene esclusivamente il periodo scelto e tutte le sue giornate,
+  incluse quelle senza record (valori a zero).
 - Validazione strutturale del file generato rispetto al riferimento
   (`src/reporting/validator.py`): fogli, righe, colonne, valori, font, colori
   di sfondo, bordi, allineamenti, formati numerici, celle unite, larghezze
@@ -85,6 +91,21 @@ Il comando:
 - **4 colonne / 2 righe** (area `FJ:FM`, righe 32-33): artefatto isolato
   presente nel solo file di riferimento storico, non riconducibile a una
   regola sistematica.
+
+## Modalità test mensile (`--test-month`)
+
+Verifica rapidamente il filtro senza connettersi a Oracle:
+
+```powershell
+python -m src.main --test-month
+```
+
+Il comando legge `examples/caso1/input.xlsx`, richiede un mese da `1` a `12`
+e genera `output_test_month.xlsx`. Valori vuoti, non numerici o fuori
+intervallo vengono richiesti nuovamente con un messaggio esplicito. Se il file
+contiene un solo anno, questo viene selezionato automaticamente; con più anni
+viene richiesto `Inserire anno da analizzare` e sono accettati solo gli anni
+presenti nell'estrazione.
 
 ## Sviluppo locale
 

@@ -62,21 +62,30 @@ def _row_total(day_values: dict) -> int:
     return sum(day_values.get(stato, 0) for stato in STATI)
 
 
-def build_report(dataframe: pd.DataFrame, query_text: str) -> ReportModel:
+def build_report(
+    dataframe: pd.DataFrame,
+    query_text: str,
+    report_dates: list | None = None,
+) -> ReportModel:
     """Build the full report data model from the raw query result set."""
 
     title = extract_report_title(query_text)
 
+    dates = report_dates or []
     if dataframe.empty:
-        return ReportModel(title=title, dates=[], groups=[
+        groups = [
             GroupResult(code=code, header_label=header, subtotal_label=subtotal)
             for code, header, subtotal in GROUP_DEFINITIONS
-        ])
+        ]
+        for group in groups:
+            group.subtotal = {date: {stato: 0 for stato in STATI} for date in dates}
+        return ReportModel(title=title, dates=dates, groups=groups)
 
-    dates = [
-        date_value.to_pydatetime()
-        for date_value in sorted(pd.to_datetime(dataframe["DATAA"]).dt.normalize().unique())
-    ]
+    if not dates:
+        dates = [
+            date_value.to_pydatetime()
+            for date_value in sorted(pd.to_datetime(dataframe["DATAA"]).dt.normalize().unique())
+        ]
 
     lookup: dict[tuple, int] = {}
     for record in dataframe.itertuples(index=False):
