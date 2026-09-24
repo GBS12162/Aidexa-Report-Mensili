@@ -39,14 +39,16 @@ def load_saved_credentials() -> OracleCredentials | None:
         return None
 
 
-def save_credentials(credentials: OracleCredentials) -> None:
+def save_credentials(credentials: OracleCredentials) -> bool:
     """Persist credentials securely in the OS credential store."""
 
     try:
         keyring.set_password(CREDENTIAL_SERVICE_NAME, _USERNAME_KEY, credentials.username)
         keyring.set_password(CREDENTIAL_SERVICE_NAME, credentials.username, credentials.password)
+        return True
     except KeyringError as exc:
         LOGGER.warning("Impossibile salvare le credenziali: %s", exc)
+        return False
 
 
 def delete_saved_credentials() -> None:

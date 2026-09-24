@@ -53,8 +53,10 @@ def _authenticate() -> oracledb.Connection:
         LOGGER.error("Autenticazione Oracle fallita")
         raise RuntimeError("Impossibile autenticarsi su Oracle con le credenziali fornite") from exc
 
-    save_credentials(credentials)
-    LOGGER.info("Connessione Oracle riuscita, credenziali aggiornate")
+    if save_credentials(credentials):
+        LOGGER.info("Connessione Oracle riuscita, credenziali aggiornate")
+    else:
+        LOGGER.warning("Connessione Oracle riuscita, ma salvataggio credenziali non riuscito")
     return connection
 
 

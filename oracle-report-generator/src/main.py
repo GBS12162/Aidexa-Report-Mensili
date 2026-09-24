@@ -3,28 +3,33 @@ from __future__ import annotations
 import logging
 import sys
 
-from src.db.oracle_connection import get_connection
+from config import load_config
+from src.db.oracle_connection import OracleSettings, get_connection
 from src.reporting.data_extractor import extract_sales_data
 from src.reporting.excel_formatter import export_report
-from src.security.credential_manager import load_encrypted_credentials
 from src.utils.logger import setup_logging
-from config import load_settings
 
 LOGGER = logging.getLogger(__name__)
 
 def main() -> int:
     """Run the report generation workflow."""
-    setup_logging()
+    settings = load_config()
+    setup_logging(settings.log_file)
 
     try:
-        settings = load_settings()
         LOGGER.info("Starting sales report generation")
 
-        credentials = load_encrypted_credentials()
-        with get_connection(credentials) as connection:
-            dataframe = extract_sales_data(connection, settings.query)
+        with get_connection(
+            OracleSettings(
+                host=settings.database.host,
+                port=settings.database.port,
+                service_name=settings.database.service_name,
+            )
+        ) as connection:
+            dataframe = extract_sales_data(connection, "")
 
-        export_report(dataframe, settings.output_file)
+        pivot = dataframe
+        export_report(dataframe, pivot, settings.output_file)
         LOGGER.info("Report generated successfully")
         return 0
     except ValueError as exc:

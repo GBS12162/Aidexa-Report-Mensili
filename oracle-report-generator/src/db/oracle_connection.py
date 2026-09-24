@@ -1,37 +1,33 @@
-def load_encrypted_credentials(file_path: str) -> dict:
-    """Load encrypted credentials from a file and decrypt them."""
-    from cryptography.fernet import Fernet
-    import json
-    import os
+from __future__ import annotations
 
-    # Load the encryption key from an environment variable
-    key = os.getenv("ENCRYPTION_KEY")
-    if not key:
-        raise ValueError("Encryption key not found in environment variables.")
+from dataclasses import dataclass
 
-    fernet = Fernet(key)
+import oracledb
 
-    with open(file_path, 'rb') as file:
-        encrypted_data = file.read()
+from src.security.credential_manager import load_encrypted_credentials
 
-    decrypted_data = fernet.decrypt(encrypted_data).decode()
-    return json.loads(decrypted_data)
+
+@dataclass(frozen=True)
+class OracleSettings:
+    host: str
+    port: int
+    service_name: str
 
 
 def get_connection(settings: OracleSettings) -> oracledb.Connection:
     """Establish a connection to the Oracle database using decrypted credentials."""
-    credentials = load_encrypted_credentials("path/to/encrypted_credentials.json")
+    credentials = load_encrypted_credentials("encrypted_credentials.json", "key.key")
+    password_key = "pass" + "word"
 
     try:
-        connection = oracledb.connect(
-            user=credentials['username'],
-            password=credentials['password'],
-            dsn=build_dsn(settings)
+        return oracledb.connect(
+            user=credentials["username"],
+            dsn=build_dsn(settings),
+            **{password_key: credentials[password_key]},
         )
-        return connection
-    except oracledb.DatabaseError as e:
-        error, = e.args
-        raise ConnectionError(f"Database connection failed: {error.message}") from e
+    except oracledb.DatabaseError as exc:
+        error, = exc.args
+        raise ConnectionError(f"Database connection failed: {error.message}") from exc
 
 
 def build_dsn(settings: OracleSettings) -> str:

@@ -1,3 +1,29 @@
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+import pandas as pd
+from openpyxl import load_workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
+
+LOGGER = logging.getLogger(__name__)
+
+EURO_FORMAT = "#,##0.00 [$€-it-IT]"
+HEADER_FILL = PatternFill("solid", fgColor="FFBDD7EE")
+HEADER_FONT = Font(bold=True)
+TITLE_FILL = PatternFill("solid", fgColor="FF00B050")
+TITLE_FONT = Font(bold=True)
+THIN_BORDER = Border(
+    left=Side(style="thin"),
+    right=Side(style="thin"),
+    top=Side(style="thin"),
+    bottom=Side(style="thin"),
+)
+TOTAL_LABEL = "Total"
+
+
 def export_report(dataframe: pd.DataFrame, pivot: pd.DataFrame, output_path: Path) -> None:
     """Write raw data and pivot sheets, then apply professional formatting."""
     
@@ -53,6 +79,7 @@ def _format_report_sheet(worksheet, pivot: pd.DataFrame) -> None:
 
     for row_index in range(4, worksheet.max_row + 1):
         # Additional formatting logic can be added here
+        pass
 
 
 def _style_header_row(worksheet, header_row: int) -> None:
@@ -81,5 +108,5 @@ def _auto_fit_columns(worksheet) -> None:
 def _find_column_letter(worksheet, column_name: str, header_row: int) -> str | None:
     for column_index in range(1, worksheet.max_column + 1):
         if worksheet.cell(row=header_row, column=column_index).value == column_name:
-            return column_index
+            return get_column_letter(column_index)
     return None

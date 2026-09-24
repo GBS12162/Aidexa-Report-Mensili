@@ -1,6 +1,10 @@
-from cryptography.fernet import Fernet
-import os
+from __future__ import annotations
+
+import getpass
 import json
+import os
+
+from cryptography.fernet import Fernet
 
 def generate_key() -> bytes:
     return Fernet.generate_key()
@@ -19,7 +23,17 @@ def encrypt_credentials(credentials: dict, key: bytes) -> str:
     encrypted = fernet.encrypt(credentials_json)
     return encrypted.decode()
 
-def main():
+def _prompt_credentials() -> dict[str, str]:
+    return {
+        "username": input("Oracle username: ").strip(),
+        "password": getpass.getpass("Oracle password: "),
+        "host": input("Oracle host: ").strip(),
+        "port": input("Oracle port: ").strip(),
+        "service_name": input("Oracle service name: ").strip(),
+    }
+
+
+def main() -> None:
     key_file = 'key.key'
     if not os.path.exists(key_file):
         key = generate_key()
@@ -27,13 +41,7 @@ def main():
     else:
         key = load_key(key_file)
 
-    credentials = {
-        'username': 'your_username',
-        'password': 'your_password',
-        'host': 'your_host',
-        'port': 'your_port',
-        'service_name': 'your_service_name'
-    }
+    credentials = _prompt_credentials()
 
     encrypted_credentials = encrypt_credentials(credentials, key)
     

@@ -1,3 +1,13 @@
+from __future__ import annotations
+
+import logging
+
+import oracledb
+import pandas as pd
+
+LOGGER = logging.getLogger(__name__)
+
+
 def extract_sales_data(connection: oracledb.Connection, query: str) -> pd.DataFrame:
     """Extract sales data from Oracle using a parameterized query."""
     try:

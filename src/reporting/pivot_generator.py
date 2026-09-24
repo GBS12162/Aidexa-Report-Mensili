@@ -73,13 +73,16 @@ def build_report(dataframe: pd.DataFrame, query_text: str) -> ReportModel:
             for code, header, subtotal in GROUP_DEFINITIONS
         ])
 
-    dates = sorted(pd.to_datetime(dataframe["DATAA"]).dt.normalize().unique())
+    dates = [
+        date_value.to_pydatetime()
+        for date_value in sorted(pd.to_datetime(dataframe["DATAA"]).dt.normalize().unique())
+    ]
 
     lookup: dict[tuple, int] = {}
     for record in dataframe.itertuples(index=False):
         key = (
             str(record.URLL),
-            pd.Timestamp(record.DATAA).normalize(),
+            pd.Timestamp(record.DATAA).normalize().to_pydatetime(),
             str(record.STATOO),
             str(record.TIPO_ERRORE),
         )
@@ -108,4 +111,3 @@ def build_report(dataframe: pd.DataFrame, query_text: str) -> ReportModel:
         groups.append(group)
 
     return ReportModel(title=title, dates=dates, groups=groups)
-

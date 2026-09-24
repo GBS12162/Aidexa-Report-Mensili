@@ -27,6 +27,8 @@ def load_query_text(query_file: Path) -> str:
     text = query_file.read_text(encoding="utf-8").strip()
     if not text:
         raise ValueError(f"Il file query è vuoto: {query_file}")
+    if text.endswith(";"):
+        text = text[:-1].rstrip()
     return text
 
 
@@ -86,5 +88,4 @@ def load_mock_dataframe_from_excel(input_file: Path) -> pd.DataFrame:
     dataframe = pd.DataFrame(rows, columns=COLUMNS)
     LOGGER.info("Caricate %s righe da %s (modalità test, nessuna connessione Oracle)", len(dataframe), input_file)
     return dataframe
-
 

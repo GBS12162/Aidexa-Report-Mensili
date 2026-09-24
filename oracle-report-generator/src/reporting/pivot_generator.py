@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+import pandas as pd
+
+
 def create_sales_pivot(dataframe: pd.DataFrame) -> pd.DataFrame:
     """Create a sales pivot ordered by descending row total."""
     
