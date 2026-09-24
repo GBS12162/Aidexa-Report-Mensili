@@ -57,7 +57,7 @@ pip install -r requirements.txt
 | `ORACLE_PORT` | Sì | Porta del listener Oracle |
 | `ORACLE_SERVICE_NAME` | Sì | Service name Oracle |
 | `ORACLE_USERNAME` | Sì | Username applicativo |
-| `ORACLE_PASSWORD` | Sì | Password applicativa |
+| `ORACLE_PASSWORD` | No* | Password applicativa (*se omessa, viene richiesta a runtime con mascheratura `*`) |
 | `QUERY_START_DATE` | Sì | Data inizio filtro vendite (`YYYY-MM-DD`) |
 | `QUERY_END_DATE` | Sì | Data fine filtro vendite (`YYYY-MM-DD`) |
 | `QUERY_REGION` | No | Filtro opzionale per regione |
@@ -69,6 +69,9 @@ pip install -r requirements.txt
 ```bash
 python -m src.main
 ```
+
+Se `ORACLE_PASSWORD` non è presente nel file `.env`, l'app richiede la password in console mostrando `*` per ogni carattere digitato (con supporto Backspace).  
+In caso di autenticazione Oracle fallita (`ORA-01017`), la password viene richiesta nuovamente con la stessa mascheratura.
 
 Alla fine dell'esecuzione il programma genera:
 
