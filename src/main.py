@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import getpass
 import logging
 import sys
 
@@ -22,6 +21,7 @@ from src.security.credential_manager import (
     save_credentials,
 )
 from src.utils.logger import setup_logging
+from src.utils.masked_input import masked_input
 
 LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ LOGGER = logging.getLogger(__name__)
 def _ask_credentials() -> OracleCredentials:
     print("Inserire le credenziali Oracle.")
     username = input("Username Oracle: ").strip()
-    password = getpass.getpass("Password Oracle: ")
+    password = masked_input("Password Oracle: ")
     return OracleCredentials(username=username, password=password)
 
 
