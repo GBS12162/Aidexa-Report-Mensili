@@ -5,10 +5,12 @@ def build_executable():
     pyinstaller_command = [
         "pyinstaller",
         "--onefile",
-        "--add-data", ".env;.",
         "--add-data", "report.spec;.",
         "src/main.py"
     ]
+
+    if os.path.exists(".env"):
+        pyinstaller_command[2:2] = ["--add-data", ".env;."]
     
     try:
         subprocess.run(pyinstaller_command, check=True)
