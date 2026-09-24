@@ -1,183 +1,168 @@
-# oracle-report-generator
+# Aidexa Report Mensili
 
-Repository Python professionale per l'estrazione dati da Oracle e la generazione automatica di report Excel con Pivot Table e formattazione avanzata.
+Generatore di report Excel a partire da una query Oracle fissa
+(`examples/caso1/query.sql`), distribuito come eseguibile Windows standalone.
 
 ## Funzionalità
 
-- Connessione a database Oracle tramite `oracledb`
-- Configurazione credenziali e parametri via file `.env`
-- Esecuzione query SQL parametrica su dati di vendita
-- Esportazione dati grezzi nel foglio Excel `DATI`
-- Generazione Pivot Table nel foglio `REPORT`
-- Formattazione professionale con `openpyxl`
-- Logging applicativo su `logs/report.log`
-- Gestione errori per configurazione, Oracle, query e file bloccati
+- Connessione Oracle tramite `oracledb` in modalità **thin** (nessun Oracle
+  Client/Instant Client richiesto). Stringa di connessione fissa (fornita
+  dall'IT), non configurabile.
+- Credenziali richieste al primo avvio e salvate in modo sicuro in
+  **Windows Credential Manager** tramite `keyring`. Ai riavvii successivi
+  vengono riusate automaticamente; in caso di fallimento vengono richieste
+  di nuovo e poi aggiornate.
+- Esecuzione della query in `examples/caso1/query.sql` e generazione di un
+  report Excel che riproduce la struttura di
+  `examples/caso1/output_atteso.xlsx` (righe per URL raggruppate per tipo
+  errore 400/500, colonne per data/stato con subtotali e totale generale).
+- Validazione strutturale del file generato rispetto al riferimento
+  (`src/reporting/validator.py`): fogli, righe, colonne, valori, font, colori
+  di sfondo, bordi, allineamenti, formati numerici, celle unite, larghezze
+  colonna, altezze riga, freeze panes e filtri.
+- Modalità di test offline (`--test-excel`): genera e valida il report senza
+  alcuna connessione Oracle (vedi sezione dedicata sotto).
+- Logging minimale su `logs/report.log` (mai password o credenziali).
 
-## Requisiti
+## Regole di business dedotte dagli esempi
 
-- Python 3.12
-- Accesso a un database Oracle
+- `input.xlsx` = dump grezzo del risultato della query (stesse colonne:
+  `URLL, DATAA, STATOO, TIPO_ERRORE, CONTEGGIO, CONTEGGIO_RAW`).
+- `output_atteso.xlsx` = pivot costruito da quei dati:
+  - righe: gruppo `TIPO_ERRORE` (`'400'` → "Errori gestiti (400)",
+    `'500'` → "Errori non gestiti (500)"), poi URL in ordine alfabetico,
+    poi riga subtotale ("TOTALE ERRORI GESTITI"/"TOTALE ERRORI NON GESTITI");
+  - colonne: una data per blocco di 9 colonne (8 stati `A,D,F,I,K,N,P,T` +
+    1 colonna totale), poi colonna "Grand Total" finale;
+  - titolo report derivato dal filtro `prdt_code` della query
+    (es. `DEPOSITO_VINCOLATO_AIDEXA` → "VINCOLATO");
+  - colorazione: stati `A,D,F,I` giallo, `K,N,P,T` azzurro chiaro (solo sulla
+    riga di intestazione stati), colonne totale grigio chiaro, riga banner di
+    gruppo con testo bianco su sfondo blu, riga "Grand Total" evidenziata
+    uniformemente in azzurro con bordo superiore.
 
-## Installazione
+## Modalità di test offline (`--test-excel`)
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+Permette di validare **esclusivamente** la logica di trasformazione e la
+formattazione Excel, senza alcuna connessione Oracle, query, autenticazione o
+accesso a credenziali:
+
+```powershell
+python -m src.main --test-excel
 ```
 
-## Configurazione Oracle
+oppure, con l'eseguibile compilato:
 
-1. Copiare il file di esempio:
+```powershell
+ReportGenerator.exe --test-excel
+```
 
-   ```bash
-   cp .env.example .env
-   ```
+Il comando:
 
-2. Configurare le variabili:
+1. legge `examples/caso1/input.xlsx` (simula il risultato della query, stesso
+   schema di colonne);
+2. applica le stesse trasformazioni della modalità normale
+   (`pivot_generator.build_report` + `excel_formatter.export_report`);
+3. genera `output_test.xlsx` nella cartella dell'eseguibile/script;
+4. confronta `output_test.xlsx` con `examples/caso1/output_atteso.xlsx`
+   tramite `src/reporting/validator.py`;
+5. stampa un report dettagliato delle differenze (foglio, cella, riga,
+   colonna, valore atteso/generato, font, colori, bordi, allineamenti,
+   formati numerici, celle unite, larghezze/altezze) e termina con exit code
+   `0` se identico, `2` se sono state rilevate differenze, `1` in caso di
+   errore.
 
-   ```env
-   ORACLE_HOST=oracle.example.internal
-   ORACLE_PORT=1521
-   ORACLE_SERVICE_NAME=ORCLPDB1
-   ORACLE_USERNAME=report_user
-   ORACLE_PASSWORD=change_me
-   QUERY_START_DATE=2026-01-01
-   QUERY_END_DATE=2026-01-31
-   QUERY_REGION=
-   OUTPUT_FILE=output/report.xlsx
-   LOG_FILE=logs/report.log
-   ```
+### Differenze residue note (non bug)
 
-## Variabili ambiente
+- **Larghezze colonna**: l'originale usa larghezze frazionarie calcolate da
+  Excel (auto-fit storico); il generatore usa larghezze fisse leggibili.
+  Differenza puramente cosmetica.
+- **Alcuni valori (righe URL del gruppo 500)**: `input.xlsx` e
+  `output_atteso.xlsx` provengono da due esecuzioni storiche non
+  perfettamente allineate (elenco URL leggermente diverso). Struttura,
+  numero di righe/colonne e tutte le regole di formattazione coincidono
+  comunque esattamente.
+- **4 colonne / 2 righe** (area `FJ:FM`, righe 32-33): artefatto isolato
+  presente nel solo file di riferimento storico, non riconducibile a una
+  regola sistematica.
 
-| Variabile | Obbligatoria | Descrizione |
-| --- | --- | --- |
-| `ORACLE_HOST` | Sì | Host del database Oracle |
-| `ORACLE_PORT` | Sì | Porta del listener Oracle |
-| `ORACLE_SERVICE_NAME` | Sì | Service name Oracle |
-| `ORACLE_USERNAME` | Sì | Username applicativo |
-| `ORACLE_PASSWORD` | Sì | Password applicativa |
-| `QUERY_START_DATE` | Sì | Data inizio filtro vendite (`YYYY-MM-DD`) |
-| `QUERY_END_DATE` | Sì | Data fine filtro vendite (`YYYY-MM-DD`) |
-| `QUERY_REGION` | No | Filtro opzionale per regione |
-| `OUTPUT_FILE` | No | Percorso file Excel finale |
-| `LOG_FILE` | No | Percorso file di log applicativo |
+## Sviluppo locale
 
-## Esecuzione
-
-```bash
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 python -m src.main
 ```
 
-Alla fine dell'esecuzione il programma genera:
+Al primo avvio verranno richiesti username e password Oracle.
 
-- `output/report.xlsx`
-- `logs/report.log`
+## Build dell'eseguibile standalone
+
+```powershell
+pip install -r requirements.txt
+pyinstaller ReportGenerator.spec --noconfirm
+```
+
+Il file `dist\ReportGenerator.exe` è autosufficiente: non richiede Python,
+pip, librerie esterne o Oracle Client sulla macchina di destinazione.
+
+`ReportGenerator.spec` include già:
+
+- `datas`: `examples/caso1/query.sql` (bundlata nell'eseguibile);
+- `hiddenimports`: tutti i backend di `keyring` (incluso quello Windows) e i
+  moduli `pywin32` necessari per l'accesso a Credential Manager.
+
+## Checklist di validazione finale
+
+1. Disinstallare Python dalla macchina di test.
+2. Copiare solo `ReportGenerator.exe` in una cartella qualsiasi.
+3. Eseguire l'exe con doppio click: non deve comparire alcun
+   `ModuleNotFoundError`, `ImportError`, `DLL load failed` o
+   `Failed to execute script`.
+4. Al primo avvio inserire username/password Oracle quando richiesto.
+5. Verificare che l'exe si connetta a Oracle e informi chiaramente in caso
+   di credenziali errate o rete non raggiungibile.
+6. Verificare che venga eseguita la query e generato `output/report.xlsx`
+   accanto all'eseguibile.
+7. Confrontare struttura/formattazione con `examples/caso1/output_atteso.xlsx`.
+8. Riavviare l'exe e verificare che la connessione avvenga automaticamente
+   con le credenziali salvate (senza richiedere nuovamente l'input).
+
+## Checklist per `--test-excel` (senza Oracle)
+
+1. Eseguire `python -m src.main --test-excel` (o `ReportGenerator.exe --test-excel`).
+2. Verificare nell'output/log che non compaia alcun tentativo di connessione
+   Oracle, richiesta credenziali o esecuzione query.
+3. Verificare che venga creato `output_test.xlsx` nella cartella corrente.
+4. Leggere il "Report differenze" stampato a console:
+   - `Nessuna differenza rilevata` → file identico al riferimento;
+   - altrimenti, per ogni categoria (`valore`, `font`, `colore_sfondo`,
+     `bordi`, `formato_numerico`, `allineamento`, `larghezza_colonna`,
+     `altezza_riga`, `numero_righe`, `numero_colonne`, `celle_unite_*`,
+     `freeze_panes`, `filtri`) controllare foglio/cella/riga/colonna e i
+     valori atteso/generato riportati.
+5. Le uniche differenze attese allo stato attuale sono quelle documentate
+   nella sezione "Differenze residue note" sopra (larghezze colonna
+   frazionarie, disallineamento URL tra `input.xlsx` e `output_atteso.xlsx`,
+   e l'artefatto isolato in `FJ:FM` righe 32-33).
 
 ## Struttura progetto
 
 ```text
-oracle-report-generator/
-├── src/
-│   ├── __init__.py
-│   ├── db/
-│   │   ├── __init__.py
-│   │   └── oracle_connection.py
-│   ├── reporting/
-│   │   ├── __init__.py
-│   │   ├── data_extractor.py
-│   │   ├── excel_formatter.py
-│   │   └── pivot_generator.py
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   └── logger.py
-│   └── main.py
-├── logs/
-│   └── .gitkeep
-├── output/
-│   └── .gitkeep
-├── .env.example
-├── .gitignore
-├── config.py
-├── requirements.txt
-└── README.md
+config.py                     # DSN fisso, percorsi query/log/output
+requirements.txt
+ReportGenerator.spec          # spec PyInstaller definitivo (onefile)
+src/
+├── main.py                   # orchestrazione + gestione credenziali/errori + --test-excel
+├── db/oracle_connection.py   # connessione oracledb thin
+├── security/credential_manager.py  # keyring / Windows Credential Manager
+├── reporting/
+│   ├── data_extractor.py     # lettura query.sql ed esecuzione
+│   ├── pivot_generator.py    # regole di business / struttura pivot
+│   ├── excel_formatter.py    # rendering Excel (stili, merge, colori)
+│   └── validator.py          # confronto struttura vs file di riferimento
+└── utils/logger.py
+examples/                     # casi di riferimento (query, input, output atteso)
 ```
 
-## Query Oracle di esempio
-
-La query utilizzata è parametrica e realistica per un contesto vendite:
-
-```sql
-SELECT
-    TRUNC(DATA_VENDITA) AS DATA_VENDITA,
-    REGIONE,
-    CLIENTE,
-    CATEGORIA,
-    PRODOTTO,
-    IMPORTO,
-    QTA
-FROM VENDITE
-WHERE DATA_VENDITA >= :start_date
-  AND DATA_VENDITA < :end_date + 1
-  AND (:region IS NULL OR REGIONE = :region)
-ORDER BY DATA_VENDITA, REGIONE, CLIENTE
-```
-
-## Output Excel
-
-Il file Excel generato contiene:
-
-- foglio `DATI` con i risultati completi della query
-- foglio `REPORT` con pivot:
-  - righe: `REGIONE`
-  - colonne: `CATEGORIA`
-  - valori: somma `IMPORTO`
-- totali generali per righe e colonne
-- ordinamento decrescente per totale importo
-- titolo unito e centrato
-- header blu scuro con testo bianco bold
-- bordi su tutte le celle
-- formato valuta euro
-- filtri automatici
-- freeze pane
-- evidenza grafica dei totali
-- color scale rosso/giallo/verde sui valori
-
-## Troubleshooting
-
-### Credenziali mancanti
-
-Verificare che il file `.env` esista e contenga tutti i campi Oracle richiesti.
-
-### Connessione Oracle non disponibile
-
-- Verificare host, porta e service name
-- Controllare eventuali firewall/VPN
-- Confermare che l'utente abbia permessi sulla tabella `VENDITE`
-
-### Query fallita
-
-- Controllare il nome della tabella e delle colonne
-- Verificare il formato delle date nei parametri
-- Consultare `logs/report.log`
-
-### File Excel bloccato
-
-Chiudere `output/report.xlsx` se aperto in Excel e rieseguire il comando.
-
-## Esempio di output atteso
-
-```text
-2026-09-22 10:00:00,000 | INFO | src.main | Avvio generazione report vendite
-2026-09-22 10:00:01,200 | INFO | src.reporting.data_extractor | Estratte 125 righe da Oracle
-2026-09-22 10:00:02,050 | INFO | src.reporting.excel_formatter | Report Excel salvato in output/report.xlsx
-2026-09-22 10:00:02,051 | INFO | src.main | Processo completato con successo
-```
-
-## Estendibilità futura
-
-- aggiunta di più report/pivot
-- scheduling batch
-- invio email automatico
-- filtri avanzati per cliente, prodotto o categoria
