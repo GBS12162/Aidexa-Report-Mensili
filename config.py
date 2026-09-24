@@ -9,9 +9,9 @@ from pathlib import Path
 # Fixed Oracle connection descriptor (never configurable at runtime).
 ORACLE_DSN = (
     "(DESCRIPTION="
-    "(ADDRESS=(PROTOCOL=TCP)(HOST=oramonpro-scan.sg.gbs.pro)(PORT=1521))"
-    "(ADDRESS=(PROTOCOL=TCP)(HOST=oramonbc-scan.sg.gbs.pro)(PORT=1521))"
-    "(ADDRESS=(PROTOCOL=TCP)(HOST=oramongdr-scan.sg.gbs.pro)(PORT=1521))"
+    "(ADDRESS=(PROTOCOL=TCP)(HOST=oramonprex-scan.sg.gbs.pro)(PORT=1521))"
+    "(ADDRESS=(PROTOCOL=TCP)(HOST=oramonprey-scan.sg.gbs.pro)(PORT=1521))"
+    "(ADDRESS=(PROTOCOL=TCP)(HOST=oramonprez-scan.sg.gbs.pro)(PORT=1521))"
     "(FAILOVER=ON)"
     "(CONNECT_DATA="
     "(SERVER=DEDICATED)"
