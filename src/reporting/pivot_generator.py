@@ -61,21 +61,38 @@ def _row_total(day_values: dict) -> int:
     return sum(day_values.get(stato, 0) for stato in STATI)
 
 
-def build_report(dataframe: pd.DataFrame, query_text: str) -> ReportModel:
-    """Build the full report data model from the raw query result set."""
+def build_report(
+    dataframe: pd.DataFrame,
+    query_text: str,
+    dates: list | None = None,
+) -> ReportModel:
+    """Build the full report data model from the raw query result set.
+
+    When `dates` is given (every day of the selected period) those columns are
+    rendered even if no record exists for them.
+    """
 
     title = extract_report_title(query_text)
 
     if dataframe.empty:
-        return ReportModel(title=title, dates=[], groups=[
-            GroupResult(code=code, header_label=header, subtotal_label=subtotal)
+        empty_dates = list(dates or [])
+        return ReportModel(title=title, dates=empty_dates, groups=[
+            GroupResult(
+                code=code,
+                header_label=header,
+                subtotal_label=subtotal,
+                subtotal={date: {stato: 0 for stato in STATI} for date in empty_dates},
+            )
             for code, header, subtotal in GROUP_DEFINITIONS
         ])
 
-    dates = [
-        date_value.to_pydatetime()
-        for date_value in sorted(pd.to_datetime(dataframe["DATAA"]).dt.normalize().unique())
-    ]
+    if dates:
+        report_dates = list(dates)
+    else:
+        report_dates = [
+            date_value.to_pydatetime()
+            for date_value in sorted(pd.to_datetime(dataframe["DATAA"]).dt.normalize().unique())
+        ]
 
     lookup: dict[tuple, int] = {}
     for record in dataframe.itertuples(index=False):
@@ -94,10 +111,10 @@ def build_report(dataframe: pd.DataFrame, query_text: str) -> ReportModel:
 
         group = GroupResult(code=code, header_label=header_label, subtotal_label=subtotal_label, urls=urls)
 
-        subtotal: dict = {date: {stato: 0 for stato in STATI} for date in dates}
+        subtotal: dict = {date: {stato: 0 for stato in STATI} for date in report_dates}
         for url in urls:
             day_values: dict = {}
-            for date in dates:
+            for date in report_dates:
                 stato_values = {
                     stato: lookup.get((url, date, stato, code), 0) for stato in STATI
                 }
@@ -109,4 +126,4 @@ def build_report(dataframe: pd.DataFrame, query_text: str) -> ReportModel:
         group.subtotal = subtotal
         groups.append(group)
 
-    return ReportModel(title=title, dates=dates, groups=groups)
+    return ReportModel(title=title, dates=report_dates, groups=groups)

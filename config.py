@@ -59,6 +59,14 @@ DEFAULT_CONFIG: dict[str, Any] = {
             ["400", "Errori gestiti (400)", "TOTALE ERRORI GESTITI"],
             ["500", "Errori non gestiti (500)", "TOTALE ERRORI NON GESTITI"],
         ],
+        "require_month": True,
+        "require_year": True,
+    },
+    # Worksheet name -> prdt_code applied to the query filter: one query run per
+    # entry, in this exact order.
+    "products": {
+        "VINCOLATO": "DEPOSITO_VINCOLATO_AIDEXA",
+        "LIBERO": "DEPOSITO_LIBERO_AIDEXA",
     },
     "logging": {
         "level": "INFO",
@@ -192,6 +200,20 @@ class ConfigManager:
     @property
     def error_groups(self) -> list[tuple[str, str, str]]:
         return [tuple(group) for group in self._data["report"]["error_groups"]]
+
+    @property
+    def products(self) -> list[tuple[str, str]]:
+        """Return [(sheet_name, prdt_code), ...] in configuration order."""
+
+        return [(str(name), str(code)) for name, code in self._data["products"].items()]
+
+    @property
+    def require_month(self) -> bool:
+        return bool(self._data["report"].get("require_month", True))
+
+    @property
+    def require_year(self) -> bool:
+        return bool(self._data["report"].get("require_year", True))
 
     @property
     def logging_level(self) -> str:

@@ -14,9 +14,19 @@ import oracledb
 
 from config import get_config, load_settings, load_test_settings
 from src.db.oracle_connection import try_connect
-from src.reporting.data_extractor import extract_report_data, load_mock_dataframe_from_excel, load_query_text
-from src.reporting.excel_formatter import export_report
-from src.reporting.pivot_generator import build_report
+from src.reporting.data_extractor import (
+    EXPECTED_PRODUCT_FILTERS,
+    apply_period_filter,
+    apply_product_filter,
+    count_product_filters,
+    filter_by_period,
+    load_mock_dataframe_from_excel,
+    load_query_text,
+    run_query,
+)
+from src.reporting.excel_formatter import export_report, export_workbook
+from src.reporting.period import Period, ask_period
+from src.reporting.pivot_generator import ReportModel, build_report
 from src.reporting.validator import validate_against_reference
 from src.security.credential_manager import (
     OracleCredentials,
@@ -77,28 +87,54 @@ def main() -> int:
     if args.test_excel:
         return _run_test_excel_mode()
 
+    if args.test_full:
+        return _run_test_full_mode(args)
+
     settings = load_settings()
     setup_logging(settings.log_file)
 
     try:
         LOGGER.info("Avvio applicazione")
         query_text = load_query_text(settings.query_file)
+        _check_product_filters(query_text)
+
+        products = get_config().products
+        sheets: list[tuple[str, ReportModel]] = []
 
         connection = _authenticate()
         try:
-            LOGGER.info("Esecuzione query su Oracle")
-            dataframe = extract_report_data(connection, settings.query_file)
+            period = ask_period(
+                ask_month=get_config().require_month,
+                ask_year=get_config().require_year,
+            )
+            print(f"Periodo analizzato: {period.label()}")
+
+            for sheet_name, product_code in products:
+                LOGGER.info("Generazione worksheet %s", sheet_name)
+                LOGGER.info("Parametro prodotto: %s", product_code)
+
+                product_query = apply_period_filter(
+                    apply_product_filter(query_text, product_code), period
+                )
+                dataframe = run_query(connection, product_query)
+                LOGGER.info("Query eseguita correttamente")
+
+                dataframe = filter_by_period(dataframe, period)
+
+                if dataframe.empty:
+                    print(f"Attenzione: nessun dato per il prodotto {product_code} nel periodo selezionato.")
+                    LOGGER.warning("Nessuna riga nel periodo selezionato (%s)", product_code)
+
+                sheets.append(
+                    (sheet_name, build_report(dataframe, product_query, dates=period.days()))
+                )
+                LOGGER.info("Worksheet %s completato", sheet_name)
         finally:
             connection.close()
 
-        if dataframe.empty:
-            print("Attenzione: la query non ha restituito alcun dato.")
-            LOGGER.warning("Query eseguita senza righe restituite")
-
-        model = build_report(dataframe, query_text)
-
         LOGGER.info("Generazione file Excel")
-        export_report(model, settings.output_file)
+        export_workbook(sheets, settings.output_file)
+        LOGGER.info("Workbook completato")
 
         print(f"Report generato correttamente: {settings.output_file}")
         LOGGER.info("Processo completato con successo")
@@ -120,6 +156,16 @@ def main() -> int:
     return 1
 
 
+def _check_product_filters(query_text: str) -> None:
+    """Log how many prdt_code filters the query contains before running it."""
+
+    found = count_product_filters(query_text)
+    if found == EXPECTED_PRODUCT_FILTERS:
+        LOGGER.info("Occorrenze filtro prodotto trovate: %s", found)
+    else:
+        LOGGER.warning("Numero occorrenze filtro inatteso: %s", found)
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generatore report Excel Aidexa")
     parser.add_argument(
@@ -136,7 +182,78 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Genera config.example.json con tutti i parametri disponibili ed esce.",
     )
+    parser.add_argument(
+        "--test-full",
+        action="store_true",
+        help=(
+            "Simulazione completa offline: usa examples/caso1/input.xlsx come risultato "
+            "della query per ogni prodotto configurato, applica la selezione del periodo "
+            "e genera il workbook a due fogli. Nessuna connessione Oracle."
+        ),
+    )
+    parser.add_argument("--month", type=int, help="Mese (1-12) da usare con --test-full, senza prompt.")
+    parser.add_argument("--year", type=int, help="Anno (YYYY) da usare con --test-full, senza prompt.")
     return parser.parse_args()
+
+
+def _run_test_full_mode(args: argparse.Namespace) -> int:
+    """Offline end-to-end simulation: period selection + one sheet per product."""
+
+    settings = load_settings()
+    test_settings = load_test_settings()
+    setup_logging(settings.log_file)
+
+    try:
+        LOGGER.info("Avvio simulazione completa (nessuna connessione Oracle)")
+        print("Modalità test completa: nessuna connessione Oracle verrà effettuata.")
+
+        query_text = load_query_text(settings.query_file)
+        _check_product_filters(query_text)
+
+        if args.month is not None and args.year is not None:
+            period = Period(year=args.year, month=args.month)
+            LOGGER.info("Mese selezionato: %s", period.month)
+            LOGGER.info("Anno selezionato: %s", period.year)
+            LOGGER.info("Periodo analizzato: %s", period.label())
+        else:
+            period = ask_period(
+                ask_month=get_config().require_month,
+                ask_year=get_config().require_year,
+            )
+        print(f"Periodo analizzato: {period.label()}")
+
+        source = load_mock_dataframe_from_excel(test_settings.input_file)
+        sheets: list[tuple[str, ReportModel]] = []
+
+        for sheet_name, product_code in get_config().products:
+            LOGGER.info("Generazione worksheet %s", sheet_name)
+            LOGGER.info("Parametro prodotto: %s", product_code)
+
+            product_query = apply_period_filter(
+                apply_product_filter(query_text, product_code), period
+            )
+            dataframe = filter_by_period(source, period)
+            sheets.append(
+                (sheet_name, build_report(dataframe, product_query, dates=period.days()))
+            )
+            LOGGER.info("Worksheet %s completato", sheet_name)
+
+        output_file = settings.output_file.with_name("report_test.xlsx")
+        export_workbook(sheets, output_file)
+        LOGGER.info("Workbook completato")
+        print(f"File generato: {output_file}")
+        return 0
+
+    except FileNotFoundError as exc:
+        _fail("File non trovato", exc)
+    except ValueError as exc:
+        _fail("Dati non validi", exc)
+    except PermissionError as exc:
+        _fail("File Excel bloccato o non scrivibile", exc)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        _fail("Errore inatteso durante la simulazione", exc)
+
+    return 1
 
 
 def _run_test_excel_mode() -> int:
