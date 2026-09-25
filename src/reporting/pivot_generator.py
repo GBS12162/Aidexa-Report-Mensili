@@ -13,12 +13,11 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-STATI: list[str] = ["A", "D", "F", "I", "K", "N", "P", "T"]
+from config import get_config
 
-GROUP_DEFINITIONS = [
-    ("400", "Errori gestiti (400)", "TOTALE ERRORI GESTITI"),
-    ("500", "Errori non gestiti (500)", "TOTALE ERRORI NON GESTITI"),
-]
+STATI: list[str] = get_config().stato_order
+
+GROUP_DEFINITIONS = get_config().error_groups
 
 GRAND_TOTAL_LABEL = "Grand Total"
 

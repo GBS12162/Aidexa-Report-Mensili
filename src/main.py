@@ -6,9 +6,13 @@ import argparse
 import logging
 import sys
 
+# Ensure config-loading log messages (emitted at import time by other
+# modules) are visible before setup_logging() reconfigures with the file handler.
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
 import oracledb
 
-from config import load_settings, load_test_settings
+from config import get_config, load_settings, load_test_settings
 from src.db.oracle_connection import try_connect
 from src.reporting.data_extractor import extract_report_data, load_mock_dataframe_from_excel, load_query_text
 from src.reporting.excel_formatter import export_report
@@ -64,6 +68,11 @@ def main() -> int:
     """Run the report generation workflow."""
 
     args = _parse_args()
+
+    if args.generate_config:
+        target = get_config().generate_example_file()
+        print(f"File di configurazione generato: {target}")
+        return 0
 
     if args.test_excel:
         return _run_test_excel_mode()
@@ -121,6 +130,11 @@ def _parse_args() -> argparse.Namespace:
             "genera output_test.xlsx e lo confronta con examples/caso1/output_atteso.xlsx. "
             "Nessuna connessione, query o credenziale Oracle viene utilizzata."
         ),
+    )
+    parser.add_argument(
+        "--generate-config",
+        action="store_true",
+        help="Genera config.example.json con tutti i parametri disponibili ed esce.",
     )
     return parser.parse_args()
 

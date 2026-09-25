@@ -8,14 +8,14 @@ from typing import Iterator
 
 import oracledb
 
-from config import ORACLE_DSN
+from config import get_config
 from src.security.credential_manager import OracleCredentials
 
 LOGGER = logging.getLogger(__name__)
 
 
 def try_connect(credentials: OracleCredentials) -> oracledb.Connection:
-    """Open an Oracle connection using thin mode and the fixed DSN.
+    """Open an Oracle connection using thin mode and the configured DSN.
 
     Raises oracledb.Error on any authentication/network failure.
     """
@@ -23,7 +23,7 @@ def try_connect(credentials: OracleCredentials) -> oracledb.Connection:
     return oracledb.connect(
         user=credentials.username,
         password=credentials.password,
-        dsn=ORACLE_DSN,
+        dsn=get_config().oracle_dsn,
     )
 
 
