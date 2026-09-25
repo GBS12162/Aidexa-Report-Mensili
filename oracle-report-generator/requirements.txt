@@ -1,0 +1,8 @@
+src/requirements.txt
+
+cryptography
+pandas
+openpyxl
+oracledb
+python-dotenv
+logging

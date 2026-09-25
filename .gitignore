@@ -3,5 +3,8 @@
 __pycache__/
 *.py[cod]
 *.xlsx
+!examples/**/*.xlsx
 logs/report.log
 .pytest_cache/
+build/
+dist/
