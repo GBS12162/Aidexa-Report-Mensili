@@ -9,13 +9,15 @@ import pandas as pd
 import oracledb
 from openpyxl import load_workbook
 
+from config import get_config
+
 LOGGER = logging.getLogger(__name__)
 
 # Column layout of examples/caso1/query.sql (last two columns have no alias).
-COLUMNS = ["URLL", "DATAA", "STATOO", "TIPO_ERRORE", "CONTEGGIO", "CONTEGGIO_RAW"]
+COLUMNS = get_config().query_columns
 
 # Header labels expected on row 1 of examples/*/input.xlsx (order-independent lookup).
-_INPUT_HEADER_NAMES = ["URLL", "DATAA", "STATOO", "TIPO_ERRORE"]
+_INPUT_HEADER_NAMES = get_config().input_header_names
 
 
 def load_query_text(query_file: Path) -> str:
