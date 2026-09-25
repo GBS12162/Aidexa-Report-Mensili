@@ -8,12 +8,14 @@ sub-headers, one row per URL, per-group subtotal and an overall grand total.
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.styles.colors import Color
 from openpyxl.utils import get_column_letter
+from openpyxl.utils.indexed_list import IndexedList
 from openpyxl.worksheet.worksheet import Worksheet
 
 from src.reporting.pivot_generator import GRAND_TOTAL_LABEL, STATI, ReportModel
@@ -22,6 +24,10 @@ LOGGER = logging.getLogger(__name__)
 
 DATA_START_COL = 4  # column D
 COLS_PER_DATE_BLOCK = len(STATI) + 1  # 8 stato columns + 1 total column
+
+# The whole workbook uses a single font family/size.
+FONT_NAME = "Segoe UI"
+FONT_SIZE = 9
 
 # Automatic text color used by Excel's default theme ("Text 1").
 TEXT_COLOR = Color(theme=1, tint=0.0)
@@ -32,17 +38,17 @@ BLUE_FILL = PatternFill("solid", fgColor=Color(theme=4, tint=0.7999816888943144)
 YELLOW_FILL = PatternFill("solid", fgColor="FFFFFF00")
 GRAY_FILL = PatternFill("solid", fgColor=Color(theme=0, tint=-0.1499984740745262))
 
-FONT_TITLE = Font(name="Calibri", size=11, bold=True, color=TEXT_COLOR)
-FONT_NORMAL = Font(name="Calibri", size=11, bold=False, color=TEXT_COLOR)
-FONT_HEADER = Font(name="Segoe UI", size=9, bold=True, color=TEXT_COLOR)
+FONT_TITLE = Font(name=FONT_NAME, size=FONT_SIZE, bold=True, color=TEXT_COLOR)
+FONT_NORMAL = Font(name=FONT_NAME, size=FONT_SIZE, bold=False, color=TEXT_COLOR)
+FONT_HEADER = Font(name=FONT_NAME, size=FONT_SIZE, bold=True, color=TEXT_COLOR)
 
 # Banner shown on the row where a tipo_errore group starts (e.g. "Errori gestiti (400)").
 GROUP_BANNER_FILL = PatternFill("solid", fgColor=Color(theme=4, tint=0.0))
-GROUP_BANNER_FONT_LABEL = Font(name="Calibri", size=11, bold=False, color=Color(theme=0, tint=0.0))
-GROUP_BANNER_FONT_SPACER = Font(name="Calibri", size=11, bold=True, color=TEXT_COLOR)
+GROUP_BANNER_FONT_LABEL = Font(name=FONT_NAME, size=FONT_SIZE, bold=False, color=Color(theme=0, tint=0.0))
+GROUP_BANNER_FONT_SPACER = Font(name=FONT_NAME, size=FONT_SIZE, bold=True, color=TEXT_COLOR)
 
 # Label cells (col B/C) of a per-group subtotal row (e.g. "TOTALE ERRORI GESTITI").
-SUBTOTAL_LABEL_FONT = Font(name="Calibri", size=11, bold=True, color=TEXT_COLOR)
+SUBTOTAL_LABEL_FONT = Font(name=FONT_NAME, size=FONT_SIZE, bold=True, color=TEXT_COLOR)
 
 THIN_SIDE = Side(style="thin")
 THIN_BOTTOM = Border(bottom=THIN_SIDE)
@@ -129,24 +135,58 @@ def _grand_total_col(num_dates: int) -> int:
     return DATA_START_COL + num_dates * COLS_PER_DATE_BLOCK
 
 
-def export_report(model: ReportModel, output_path: Path) -> None:
-    """Write the full report to an xlsx file matching the reference layout."""
+def export_report(model: ReportModel, output_path: Path, sheet_name: str = "Sheet1") -> None:
+    """Write a single-sheet report to an xlsx file matching the reference layout."""
+
+    export_workbook([(sheet_name, model)], output_path)
+
+
+def export_workbook(sheets: Sequence[tuple[str, ReportModel]], output_path: Path) -> None:
+    """Write one worksheet per (name, model) pair, in the given order."""
+
+    if not sheets:
+        raise ValueError("Nessun worksheet da generare")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     workbook = Workbook()
-    worksheet = workbook.active
-    worksheet.title = "Sheet1"
+    # Make the report font the workbook default (index 0), so that cells openpyxl
+    # writes without an explicit style - merged cells, blank cells - use it too.
+    default_font = Font(name=FONT_NAME, size=FONT_SIZE, color=TEXT_COLOR)
+    workbook._fonts = IndexedList([default_font])
+    workbook._named_styles["Normal"].font = default_font
 
+    for index, (sheet_name, model) in enumerate(sheets):
+        worksheet = workbook.active if index == 0 else workbook.create_sheet()
+        worksheet.title = sheet_name
+        _write_sheet(worksheet, model)
+
+    workbook.save(output_path)
+    LOGGER.info("Report Excel salvato in %s", output_path)
+
+
+def _write_sheet(worksheet: Worksheet, model: ReportModel) -> None:
     grand_total_col = _grand_total_col(len(model.dates))
 
     _write_title_row(worksheet, model, grand_total_col)
     _write_stato_header_row(worksheet, model, grand_total_col)
     _write_body(worksheet, model, grand_total_col)
     _apply_sheet_layout(worksheet, grand_total_col)
+    _enforce_font(worksheet)
 
-    workbook.save(output_path)
-    LOGGER.info("Report Excel salvato in %s", output_path)
+
+def _enforce_font(worksheet: Worksheet) -> None:
+    """Give the report font to any cell left with the workbook default."""
+
+    for row in worksheet.iter_rows():
+        for cell in row:
+            if cell.font.name != FONT_NAME or cell.font.sz != FONT_SIZE:
+                cell.font = Font(
+                    name=FONT_NAME,
+                    size=FONT_SIZE,
+                    bold=cell.font.bold,
+                    color=cell.font.color if cell.font.color is not None else TEXT_COLOR,
+                )
 
 
 def _write_title_row(worksheet: Worksheet, model: ReportModel, grand_total_col: int) -> None:
