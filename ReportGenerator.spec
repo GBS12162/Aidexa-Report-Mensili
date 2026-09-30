@@ -3,7 +3,9 @@
 from PyInstaller.utils.hooks import collect_submodules
 
 hiddenimports = (
-    ["oracledb.thin_impl"]
+    ["oracledb.thin_impl", "oracledb.thick_impl"]
+    # oracledb thin mode imports cryptography from compiled code: PyInstaller can't detect it.
+    + collect_submodules("cryptography")
     + collect_submodules("keyring.backends")
     + ["win32timezone", "win32cred", "win32ctypes.pywin32"]
 )

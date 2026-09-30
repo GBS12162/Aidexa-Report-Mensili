@@ -40,6 +40,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "server_mode": "DEDICATED",
         "failover": True,
         "credential_service_name": CREDENTIAL_SERVICE_NAME,
+        # Default database name (TNS alias) proposed at the prompt; resolved via tnsping.
+        "tns_alias": "",
+        # Optional 64-bit Oracle Client folder for thick mode (fallback on DPY-3015).
+        "client_lib_dir": "",
     },
     "paths": {
         "query_file": "examples/caso1/query.sql",
@@ -180,6 +184,14 @@ class ConfigManager:
             f"(SERVICE_NAME={oracle['service_name']})"
             "))"
         )
+
+    @property
+    def tns_alias(self) -> str:
+        return str(self._data["oracle"].get("tns_alias", "") or "")
+
+    @property
+    def client_lib_dir(self) -> str:
+        return str(self._data["oracle"].get("client_lib_dir", "") or "")
 
     @property
     def credential_service_name(self) -> str:
