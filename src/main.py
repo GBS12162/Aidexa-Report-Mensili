@@ -13,7 +13,14 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 import oracledb
 
 from config import get_config, load_settings, load_test_settings
-from src.db.oracle_connection import try_connect
+from src.db.oracle_connection import (
+    OracleClientNotFoundError,
+    OracleTarget,
+    TnsPingError,
+    is_invalid_credentials,
+    resolve_tns_alias,
+    try_connect,
+)
 from src.reporting.data_extractor import (
     EXPECTED_PRODUCT_FILTERS,
     apply_period_filter,
@@ -47,25 +54,39 @@ def _ask_credentials() -> OracleCredentials:
     return OracleCredentials(username=username, password=password)
 
 
-def _authenticate() -> oracledb.Connection:
+def _ask_target() -> OracleTarget:
+    """Ask the database name and resolve its connection string with tnsping."""
+
+    default = get_config().tns_alias
+    prompt = f"Nome database (alias TNS) [{default}]: " if default else "Nome database (alias TNS): "
+    alias = input(prompt).strip() or default
+    if not alias:
+        raise TnsPingError("Nome database non specificato")
+    return resolve_tns_alias(alias)
+
+
+def _authenticate(target: OracleTarget) -> oracledb.Connection:
     """Authenticate against Oracle, retrying once with fresh credentials on failure."""
 
     saved = load_saved_credentials()
     if saved is not None:
         try:
-            connection = try_connect(saved)
+            connection = try_connect(saved, target)
             LOGGER.info("Connessione Oracle riuscita con credenziali salvate")
             return connection
         except oracledb.DatabaseError as exc:
-            LOGGER.warning("Credenziali salvate non valide, richiesta nuova autenticazione")
+            if not is_invalid_credentials(exc):
+                raise
+            LOGGER.warning("Credenziali salvate non valide: richiesta nuova autenticazione")
             delete_saved_credentials()
 
     credentials = _ask_credentials()
     try:
-        connection = try_connect(credentials)
+        connection = try_connect(credentials, target)
     except oracledb.DatabaseError as exc:
-        LOGGER.error("Autenticazione Oracle fallita")
-        raise RuntimeError("Impossibile autenticarsi su Oracle con le credenziali fornite") from exc
+        if not is_invalid_credentials(exc):
+            raise
+        raise RuntimeError("Username o password Oracle errati") from exc
 
     if save_credentials(credentials):
         LOGGER.info("Connessione Oracle riuscita, credenziali aggiornate")
@@ -87,6 +108,9 @@ def main() -> int:
     if args.test_excel:
         return _run_test_excel_mode()
 
+    if args.test_db:
+        return _run_test_db_mode()
+
     if args.test_full:
         return _run_test_full_mode(args)
 
@@ -101,7 +125,7 @@ def main() -> int:
         products = get_config().products
         sheets: list[tuple[str, ReportModel]] = []
 
-        connection = _authenticate()
+        connection = _authenticate(_ask_target())
         try:
             period = ask_period(
                 ask_month=get_config().require_month,
@@ -142,6 +166,10 @@ def main() -> int:
 
     except FileNotFoundError as exc:
         _fail("File non trovato", exc)
+    except TnsPingError as exc:
+        _fail("Database non trovato", exc)
+    except OracleClientNotFoundError as exc:
+        _fail("Thick mode non disponibile", exc)
     except RuntimeError as exc:
         _fail("Autenticazione non riuscita", exc)
     except oracledb.DatabaseError as exc:
@@ -191,9 +219,39 @@ def _parse_args() -> argparse.Namespace:
             "e genera il workbook a due fogli. Nessuna connessione Oracle."
         ),
     )
+    parser.add_argument(
+        "--test-db",
+        action="store_true",
+        help="Verifica la connessione Oracle a un database (nome risolto con tnsping).",
+    )
     parser.add_argument("--month", type=int, help="Mese (1-12) da usare con --test-full, senza prompt.")
     parser.add_argument("--year", type=int, help="Anno (YYYY) da usare con --test-full, senza prompt.")
     return parser.parse_args()
+
+
+def _run_test_db_mode() -> int:
+    """Test an Oracle endpoint without using or changing saved credentials."""
+
+    settings = load_settings()
+    setup_logging(settings.log_file)
+    print("Test connessione Oracle: nessuna credenziale verrà salvata.")
+
+    try:
+        target = _ask_target()
+    except TnsPingError as exc:
+        _fail("Database non trovato", exc)
+        return 1
+
+    credentials = _ask_credentials()
+    try:
+        connection = try_connect(credentials, target)
+        connection.close()
+    except (oracledb.DatabaseError, OracleClientNotFoundError) as exc:
+        print(f"[ERRORE] Connessione Oracle fallita: {exc}", file=sys.stderr)
+        return 1
+
+    print("[OK] Connessione Oracle riuscita.")
+    return 0
 
 
 def _run_test_full_mode(args: argparse.Namespace) -> int:

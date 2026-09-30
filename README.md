@@ -97,6 +97,18 @@ python -m src.main
 
 Al primo avvio verranno richiesti username e password Oracle.
 
+### Test connessione a un altro database Oracle
+
+```powershell
+python -m src.main --test-db
+```
+
+Inserire al prompt il DSN Oracle (`host:porta/service_name`) o un alias TNS.
+Per un alias, specificare anche la cartella contenente `tnsnames.ora`; per un
+DSN diretto lasciare vuoto quel prompt. Poi inserire username e password. Il
+test apre e chiude la connessione senza eseguire query e senza leggere o
+modificare le credenziali salvate.
+
 ## Build dell'eseguibile standalone
 
 ```powershell
